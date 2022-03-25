@@ -1,0 +1,10 @@
+{
+    "AppName": "alexa-microservice",
+
+    "WolframAlpha": {
+        "apiURI":       "https://api.wolframalpha.com/",
+        "appPath":      "v1/result?appid=",
+        "appID":        "<<OBFUSCATED>>"
+    }
+    
+}
