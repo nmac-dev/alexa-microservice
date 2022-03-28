@@ -1,5 +1,10 @@
 package src
 
+//// alpha.go: 
+//// Microservice which provides computational knowledge via communication with WolframAlpha's API.
+//// Takes a JSON object containing a text based question {"text": "<question>"}, 
+//// and returns a JSON object containing a text based answer for the question {"text": "<answer>"}
+
 import (
 	"alexa-microservice/config"
 	"net/http"
@@ -15,6 +20,8 @@ const (
 	alphaPort = ":3001"
 )
 
+var alphaQueryURI = config.GetAlphaApiURI() + config.GetAlphaAppPath() + config.GetAlphaAppID()
+
 // Recieves a JSON request, it is decoded and send as a query to WolframAlpha,
 // then the response from WolframAlpha is encoded back to JSON and sent to the requestee
 func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
@@ -23,7 +30,7 @@ func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 	if inReq.Method == "POST" {
 
 		// parse json data -> text struct
-		text := Text{Data: ""} 
+		text := JsonText{Data: ""} 
 		err  := json.NewDecoder(inReq.Body).Decode(&text)
 
 		// json parse failed or text is invalid query
@@ -33,7 +40,7 @@ func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 		}
 
 		// encode response to json
-		if response, err := commitQuery(inReq.Method, text.Data); err == nil {
+		if response, err := alphaCommit(inReq.Method, text.Data); err == nil {
 
 			// ensures IO for response closes on stack call
 			defer response.Body.Close()
@@ -42,7 +49,6 @@ func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 			if err != nil { 
 				http.Error(outRsp, "Failed to read JSON from WolframAlpha", http.StatusBadRequest)
 			}
-
 			outRsp.WriteHeader(http.StatusOK)
 
 			// encode text struct to json
@@ -56,18 +62,17 @@ func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 }
 
 // Builds a new request query, then commits it to the URI and catches the response to be returned
-func commitQuery(method string, text string) (*http.Response, error) {
+func alphaCommit(method string, text string) (*http.Response, error) {
 
 	var status error = nil
 
 	// empty client struct
 	client	 := &http.Client{}
-	alphaURI := config.GetAlphaApiURI() + config.GetAlphaAppPath() + config.GetAlphaAppID()
 	
 	// build request
-	request, err := http.NewRequest(method, alphaURI, nil)
+	request, err := http.NewRequest(method, alphaQueryURI, nil)
 	if err != nil {
-		status = errors.New("Failed to create request for: " + alphaURI + "\nE:" + err.Error())
+		status = errors.New("Failed to create request for: " + alphaQueryURI + "\nE:" + err.Error())
 	}
 
 	// build query
@@ -75,7 +80,7 @@ func commitQuery(method string, text string) (*http.Response, error) {
 	query.Add(queryKey, text)
 	request.URL.RawQuery = query.Encode()
 
-	// commit query
+	// commit alpha query
 	response, err := client.Do(request)
 	if err != nil { 
 		status = errors.New("WolframAlpha query failed to respond" + "\nE:" + err.Error())
