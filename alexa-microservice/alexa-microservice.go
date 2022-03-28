@@ -16,5 +16,6 @@ func main() {
 	}
 
 	// set microservice listener threads
-	src.SetAlphaListenerThread()
+	// src.SetAlphaListenerThread()
+	src.SetTTSListenerThread()
 }
