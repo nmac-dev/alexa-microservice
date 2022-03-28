@@ -5,6 +5,25 @@
         "apiURI":       "https://api.wolframalpha.com/",
         "appPath":      "v1/result?appid=",
         "appID":        "<<OBFUSCATED>>"
+    },
+
+    "MicrosoftCS": {
+        "region":   "uksouth",
+        "tts":      ".tts.speech.microsoft.com/",
+        "stt":      ".stt.speech.microsoft.com/speech/recognition/conversation/",
+        "sttLang":  "?language=en-US",
+        "srvPath":  "cognitiveservices/v1",
+        "azureKey": "<<OBFUSCATED>>"
+    },
+
+    "Xml": {
+        "version":  "1.0",
+        "encoding": "UTF-8",
+        "lang":     "en-US"
+    },
+    "Ssml": {
+        "voice": {
+            "name": "en-US-JennyNeural"
+        }
     }
-    
 }
