@@ -57,14 +57,18 @@ type (
 		CharData	[]byte		`xml:",chardata"`
 	} // <voice>
 
-	// SSML/XML declaration example
-	// xml.name		`xml:name`		  ==	<name></name>
-	// int			`xml:id,attr`	  ==	<name id='10'> </name>
-	// []byte		`xml:chardata`	  ==	<name id='10'> CharData Value </name>
-	// xml.name		`xml:parent>name` ==	<parent>
-	//											<name id='10' >CharData Value</name>
-	//										</parent>
+	// MCS json response fields: {"RecognitionStatus","DisplayText","Offset","Duration"}
+	// DisplayText is the field required for JsonText
+	MCSJsonRsp struct {
+		RecognitionStatus 	string
+		DisplayText			string
+		Offset				int
+		Duration			int
+	}
 )
+
+// Helper function to ignore double valued returns
+func singular(val []byte, _ interface{}) *([]byte) { return &val }
 
 // Outputs the data to the specific filename within the resource directory
 func writeToResFile(filename string, data []byte) {
