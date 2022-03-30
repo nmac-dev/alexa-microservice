@@ -1,6 +1,7 @@
 #!/bin/ps1
-$WAVE = [convert]::ToBase64String((Get-Content -Path ".\res\tts-speech.wav" -Encoding Byte))
-$JSON='{"speech": "' + $WAVE + '"}'
-$JSON2 = Invoke-RestMethod -Method POST -Body $JSON -Uri @localhost:3002/stt | ConvertTo-Json -Compress
+$WAVE64 = [convert]::ToBase64String((Get-Content -Path ".\res\tts-speech.wav" -Encoding Byte))
+$JSON_INPUT='{"speech": "' + $WAVE64 + '"}'
+$STT_OUT = Invoke-RestMethod -Method POST -Body $JSON_INPUT -Uri @localhost:3002/stt `
+            | ConvertTo-Json -Compress
 
-Write-Output $JSON2
+Write-Output $STT_OUT

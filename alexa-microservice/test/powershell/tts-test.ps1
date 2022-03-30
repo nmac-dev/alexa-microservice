@@ -1,5 +1,6 @@
 #!/bin/ps1
-$JSON='{"text": "What is the melting point of silver?"}'
-$JSON2 = Invoke-RestMethod -Method POST -Body $JSON -Uri @localhost:3003/tts | ConvertTo-Json -Compress
+$JSON_INPUT='{"text": "What is the melting point of silver?"}'
+$TTS_OUT = Invoke-RestMethod -Method POST -Body $JSON_INPUT -Uri @localhost:3003/tts `
+            | ConvertTo-Json -Compress
 
-Write-Output $JSON2
+Write-Output $TTS_OUT
