@@ -1,4 +1,4 @@
-package src
+package services
 
 //// stt.go:
 //// Microservice which computes Speech to Text using Microsoft Cognitive Services (MCS).
@@ -11,15 +11,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"github.com/gorilla/mux"
-)
-
-const (
-	sttPath = "/stt"
-	sttPort = ":3002"
 )
 
 var (
@@ -27,20 +21,14 @@ var (
 	hTypeWAVE64 = rHeader{Key: "Content-Type", Value: "audio/wav;codecs=audio/pcm;samplerate=16000"}
 	
 	// MicrosoftCS STT URI
-	sttURI = fmt.Sprintf(
-		"https://%s%s%s%s",
-		config.GetMcsRegion(),
-		config.GetMcsSTT(),
-		config.GetMcsSrvPath(),
-		config.GetMcsSTTLang(),
-	)
+	sttURI = "https://" + 
+			config.GetMcsRegion()+ config.GetMcsSTT()+ config.GetMcsSrvPath()+ config.GetMcsSTTLang()
 )
 
 // Decodes .wav(base64) data from inbound JSON object, then is given to Microsoft Cognitive Services
 // and the response is returned as a text JSON object which contains the speech to text conversion   
 func speechToText(outRsp http.ResponseWriter, inReq *http.Request) {
 
-	// ignore GET requests
 	if inReq.Method == "POST" {
 
 		// json data -> speech struct
@@ -51,8 +39,9 @@ func speechToText(outRsp http.ResponseWriter, inReq *http.Request) {
 			http.Error(outRsp, "invalid JSON object \nE: " + err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		if response, err := sttCommit(inReq.Method, speechWAVE.Data); err == nil {
+		
+		// query MCS
+		if response, err := sttCommit(speechWAVE.Data); err == nil {
 			
 			defer response.Body.Close()
 			
@@ -69,8 +58,10 @@ func speechToText(outRsp http.ResponseWriter, inReq *http.Request) {
 
 			speechText := JsonText{Data: mcsJson.DisplayText}
 
-			// store json object
-			writeToResFile("stt-data.json", *singular(json.Marshal(speechText)))
+			//// Debug Only
+			if debugWriteResourceToFile {	
+				writeToResFile("stt-text.json", *singular(json.Marshal(speechText)))
+			}
 
 			// return json text struct
 			json.NewEncoder(outRsp).Encode(speechText)
@@ -78,16 +69,19 @@ func speechToText(outRsp http.ResponseWriter, inReq *http.Request) {
 		} else {
 			http.Error(outRsp, err.Error(), http.StatusBadRequest)
 		}
+	} else {
+		http.Error(outRsp, "Only POST requests are accepted for Speech to Text", http.StatusBadRequest)
 	}
 }
 
 // Sends a request with .wav(base64) data to Microsoft Cognitive Services, then returns the response
-func sttCommit(method string, speechData []byte) (*http.Response, error) {
+func sttCommit(speechData []byte) (*http.Response, error) {
 
 	var status error = nil
 
+	// sends WAVE64 to MCS
 	client	 := &http.Client{}
-	request, err := http.NewRequest(method, sttURI, bytes.NewReader(speechData))
+	request, err := http.NewRequest("POST", sttURI, bytes.NewReader(speechData))
 	if err != nil {
 		status = errors.New("Failed to create request for: " + sttURI + "\nE:" + err.Error())
 	}
@@ -108,10 +102,10 @@ func sttCommit(method string, speechData []byte) (*http.Response, error) {
 func SetSTTListenerThread() {
 
 	router := mux.NewRouter()
-	router.HandleFunc(sttPath, speechToText).Methods("POST")
+	router.HandleFunc(STTPath, speechToText).Methods("POST")
 
 	// set listen to wait for request
-	if err := http.ListenAndServe(sttPort, router); err != nil {
+	if err := http.ListenAndServe(STTPort, router); err != nil {
 		panic(err)
 	}
 }

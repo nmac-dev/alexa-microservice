@@ -1,4 +1,4 @@
-package src
+package services
 
 //// alexa.go:
 //// Microservice which commits several queries to convert a spoken question to a spoken answer  
@@ -8,17 +8,10 @@ package src
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
-
 	"github.com/gorilla/mux"
-)
-
-const (
-	alexaPath = "/alexa"
-	alexaPort = ":3000"
 )
 
 // Recieves a JSON object containing a spoken question in the form of .wav(base64) audio data,
@@ -28,6 +21,7 @@ func wave64QuestionToAnswer(outRsp http.ResponseWriter, inReq *http.Request) {
 
 	if inReq.Method == "POST" {
 	
+		// get request data
 		reqBody, err := ioutil.ReadAll(inReq.Body)
 		if err != nil { 
 			http.Error(outRsp, "invalid JSON object \nE: " + err.Error(), http.StatusBadRequest)
@@ -36,19 +30,14 @@ func wave64QuestionToAnswer(outRsp http.ResponseWriter, inReq *http.Request) {
 		inReq.Body.Close()
 
 		// speech to text
-		if sttData,	err := queryMicroService(sttPort, sttPath , reqBody); err == nil {
+		if sttData,	err := queryMicroService(STTPort, STTPath , reqBody); err == nil {
 
 			// WolframAlpha query
-			if alphaData, err := queryMicroService(alphaPort, alphaPath, sttData); err == nil {
+			if alphaData, err := queryMicroService(AlphaPort, AlphaPath, sttData); err == nil {
 
 				// text to speech
-				if ttsData, err := queryMicroService(ttsPort, ttsPath, alphaData); err == nil {
-
-					// store .wav(base64) answer for input question
-					speechWAVE := JsonSpeech{}
-					json.Unmarshal(ttsData, &speechWAVE)
-					writeToResFile("alexa-wave-data.wav", speechWAVE.Data)
-
+				if ttsData, err := queryMicroService(TTSPort, TTSPath, alphaData); err == nil {
+			
 					// return response json speech struct containing .wav(base64) data
 					outRsp.WriteHeader(http.StatusOK)
 					outRsp.Write(ttsData)
@@ -60,6 +49,8 @@ func wave64QuestionToAnswer(outRsp http.ResponseWriter, inReq *http.Request) {
 		if err != nil {
 			http.Error(outRsp, err.Error(), http.StatusBadRequest)
 		}
+	} else {
+		http.Error(outRsp, "Only POST requests are accepted for Alexa", http.StatusBadRequest)
 	}
 }
 
@@ -67,9 +58,9 @@ func wave64QuestionToAnswer(outRsp http.ResponseWriter, inReq *http.Request) {
 func queryMicroService(localPort string, localPath string, data []byte) ([]byte, error) {
 
 	var status error = nil
-
 	localURI := "http://localhost" + localPort + localPath
 
+	// sends data to other microservice
 	client	 := &http.Client{}
 	request, err := http.NewRequest("POST", localURI, bytes.NewReader(data))
 	if err != nil {
@@ -99,10 +90,10 @@ func queryMicroService(localPort string, localPath string, data []byte) ([]byte,
 func SetAlexaListenerThread() {
 
 	router := mux.NewRouter()
-	router.HandleFunc(alexaPath, wave64QuestionToAnswer).Methods("POST")
+	router.HandleFunc(AlexaPath, wave64QuestionToAnswer).Methods("POST")
 
 	// set listen to wait for request
-	if err := http.ListenAndServe(alexaPort, router); err != nil {
+	if err := http.ListenAndServe(AlexaPort, router); err != nil {
 		panic(err)
 	}
 }

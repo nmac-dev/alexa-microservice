@@ -1,4 +1,6 @@
-package src
+package services
+
+//// Hosts utility functions, variables, & structs used in data representation
 
 import (
 	"alexa-microservice/config"
@@ -8,24 +10,37 @@ import (
 	"os"
 )
 
-//// Hosts utility functions, variables, & structs used in data representation
-
 const (
+	// if true writes the data files handled by the microsservices to the resource directory
+	debugWriteResourceToFile bool = false
+	
+	// resource directory & permissions
 	resPath		= "res/"
-	resPerms	= fs.FileMode(0666); // -rw-rw-rw- | read & write 
+	resPerms	= fs.FileMode(0666); // -rw-rw-rw- | read & write
+
+	//// Ports
+
+	// WolframAlpha Query
+	AlphaPath = "/alpha"
+	AlphaPort = ":3001"
+
+	// speech to text
+	STTPath = "/stt"
+	STTPort = ":3002"
+
+	// text to speech
+	TTSPath = "/tts"
+	TTSPort = ":3003"
+
+	// speech to speech (alexa)
+	AlexaPath = "/alexa"
+	AlexaPort = ":3000"
 )
 
-var (
-	xmlHeader = fmt.Sprintf(
-		`<?xml version="%s" encoding="%s"?>%c`, 
-		config.GetXmlVersion(), config.GetXmlEncoding(), '\n',
-	)
-	// request header for MCS azure key	
-	hAzureKey = rHeader{Key: "Ocp-Apim-Subscription-Key", Value: config.GetMcsAzureKey() }
-)
+// request header for MCS azure key	
+var hAzureKey = rHeader{Key: "Ocp-Apim-Subscription-Key", Value: config.GetMcsAzureKey()}
 
 type (
-	
 	// JSON text
 	JsonText struct {
 		Data string `json:"text"`

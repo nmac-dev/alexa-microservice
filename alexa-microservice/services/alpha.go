@@ -1,4 +1,4 @@
-package src
+package services
 
 //// alpha.go: 
 //// Microservice which provides computational knowledge via communication with WolframAlpha's API.
@@ -14,19 +14,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const (
-	queryKey  = "i"
-	alphaPath = "/alpha"
-	alphaPort = ":3001"
+var (
+	alphaQueryKey = "i"
+	alphaQueryURI = config.GetAlphaApiURI() + config.GetAlphaAppPath() + config.GetAlphaAppID()
 )
-
-var alphaQueryURI = config.GetAlphaApiURI() + config.GetAlphaAppPath() + config.GetAlphaAppID()
 
 // Recieves a JSON request, it is decoded and send as a query to WolframAlpha,
 // then the response from WolframAlpha is encoded back to JSON and sent to the requestee
 func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 
-	// ignore GET requests
 	if inReq.Method == "POST" {
 
 		// parse json data -> text struct
@@ -40,7 +36,7 @@ func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 		}
 
 		// encode response to json
-		if response, err := alphaCommit(inReq.Method, text.Data); err == nil {
+		if response, err := alphaCommit(text.Data); err == nil {
 
 			// ensures IO for response closes on stack call
 			defer response.Body.Close()
@@ -50,34 +46,40 @@ func alphaQuery(outRsp http.ResponseWriter, inReq *http.Request) {
 				http.Error(outRsp, "Failed to read JSON from WolframAlpha", http.StatusBadRequest)
 			}
 			outRsp.WriteHeader(http.StatusOK)
+			
+			text.Data = string(body) 
+
+			//// Debug Only
+			if debugWriteResourceToFile {
+				writeToResFile("alpha-answer.json", *singular(json.Marshal(text)))
+			}
 
 			// encode text struct to json
-			text.Data = string(body) 
 			json.NewEncoder(outRsp).Encode(text)
 
 		} else {
 			http.Error(outRsp, err.Error(), http.StatusBadRequest)
 		}
+	} else {
+		http.Error(outRsp, "Only POST requests are accepted for Alpha Queries", http.StatusBadRequest)
 	}
 }
 
 // Builds a new request query, then commits it to the URI and catches the response to be returned
-func alphaCommit(method string, text string) (*http.Response, error) {
+func alphaCommit(text string) (*http.Response, error) {
 
 	var status error = nil
 
-	// empty client struct
+	// sends JSON object to WolframAlpha API
 	client	 := &http.Client{}
-	
-	// build request
-	request, err := http.NewRequest(method, alphaQueryURI, nil)
+	request, err := http.NewRequest("POST", alphaQueryURI, nil)
 	if err != nil {
 		status = errors.New("Failed to create request for: " + alphaQueryURI + "\nE:" + err.Error())
 	}
 
-	// build query
+	// append text query to URI
 	query := request.URL.Query()
-	query.Add(queryKey, text)
+	query.Add(alphaQueryKey, text)
 	request.URL.RawQuery = query.Encode()
 
 	// commit alpha query
@@ -93,10 +95,10 @@ func alphaCommit(method string, text string) (*http.Response, error) {
 func SetAlphaListenerThread() {
 
 	router := mux.NewRouter()
-	router.HandleFunc(alphaPath, alphaQuery).Methods("POST")
+	router.HandleFunc(AlphaPath, alphaQuery).Methods("POST")
 
 	// set listen to wait for request
-	if err := http.ListenAndServe(alphaPort, router); err != nil {
+	if err := http.ListenAndServe(AlphaPort, router); err != nil {
 		panic(err)
 	}
 }

@@ -1,4 +1,4 @@
-package src
+package services
 
 //// tts.go: (
 //// Microservice which computes Text to Speech using Microsoft Cognitive Services (MCS).
@@ -16,12 +16,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const (
-	ttsPath = "/tts"
-	ttsPort = ":3003"
-)
-
 var (
+	// XML header with config values
+	xmlHeader = `<?xml version="`+ config.GetXmlVersion() +
+				`" encoding="`	 + config.GetXmlEncoding() +`"?>` + "\n"
+
 	// SSML Tag: <speak> <voice> </speak>
 	ssmlSpeak = SSMLSpeak {
 		XMLName:	xml.Name{},
@@ -33,7 +32,6 @@ var (
 			Name:		config.GetSsmlVoiceName(),
 		},
 	}
-
 	// sets input as ssml & xml
 	hTypeTTS = rHeader{Key: "Content-Type",				Value: "application/ssml+xml"		}
 	// sets output as RIFF|WAVE(base64) {.wav}
@@ -47,7 +45,6 @@ var (
 // and send an output response containing the .wav(base64) speech data
 func textToSpeech(outRsp http.ResponseWriter, inReq *http.Request) {
 
-	// ignore GET requests
 	if inReq.Method == "POST" {
 
 		// json data -> text struct
@@ -69,7 +66,8 @@ func textToSpeech(outRsp http.ResponseWriter, inReq *http.Request) {
 		}
 		xmlElements = []byte(xmlHeader + string(xmlElements))
 
-		if response, err := ttsCommit(inReq.Method, xmlElements); err == nil {
+		// query MCS
+		if response, err := ttsCommit(xmlElements); err == nil {
 			
 			defer response.Body.Close()
 			
@@ -80,9 +78,11 @@ func textToSpeech(outRsp http.ResponseWriter, inReq *http.Request) {
 			}
 			outRsp.WriteHeader(http.StatusOK)
 
-			// Store ssml & .wav
-			writeToResFile("tts-ssml.xml", xmlElements)
-			writeToResFile("tts-speech.wav", body)
+			//// Debug Only
+			if debugWriteResourceToFile {	
+				writeToResFile("tts-ssml.xml", xmlElements)
+				writeToResFile("tts-speech.wav", body)
+			}
 
 			// WAVE(base64) data -> json speech struct
 			json.NewEncoder(outRsp).Encode(JsonSpeech{Data: body})
@@ -90,16 +90,19 @@ func textToSpeech(outRsp http.ResponseWriter, inReq *http.Request) {
 		} else {
 			http.Error(outRsp, err.Error(), http.StatusBadRequest)
 		}
+	} else {
+		http.Error(outRsp, "Only POST requests are accepted for Text to Speech", http.StatusBadRequest)
 	}
 }
 
 // Sends a request with SSML to Microsoft Cognitive Services, then returns the response
-func ttsCommit(method string, xmlElements []byte) (*http.Response, error) {
+func ttsCommit(xmlElements []byte) (*http.Response, error) {
 
 	var status error = nil
 
+	// sends XML to MCS
 	client	 := &http.Client{}
-	request, err := http.NewRequest(method, ttsURI, bytes.NewReader(xmlElements))
+	request, err := http.NewRequest("POST", ttsURI, bytes.NewReader(xmlElements))
 	if err != nil {
 		status = errors.New("Failed to create request for: " + ttsURI + "\nE:" + err.Error())
 	}
@@ -121,10 +124,10 @@ func ttsCommit(method string, xmlElements []byte) (*http.Response, error) {
 func SetTTSListenerThread() {
 
 	router := mux.NewRouter()
-	router.HandleFunc(ttsPath, textToSpeech).Methods("POST")
+	router.HandleFunc(TTSPath, textToSpeech).Methods("POST")
 
 	// set listen to wait for request
-	if err := http.ListenAndServe(ttsPort, router); err != nil {
+	if err := http.ListenAndServe(TTSPort, router); err != nil {
 		panic(err)
 	}
 }
