@@ -2,7 +2,7 @@ package main
 
 import (
 	"alexa-microservice/config"
-	"alexa-microservice/src"
+	"alexa-microservice/services"
 	"fmt"
 )
 
@@ -18,16 +18,16 @@ func main() {
 	//// create go routines for all microservice listener threads
 
 	// WolframAlpha Queries
-	go src.SetAlphaListenerThread()
+	go services.SetAlphaListenerThread()
 	
 	// Twxt to Speech
-	go src.SetTTSListenerThread()
+	go services.SetTTSListenerThread()
 	
 	// Speech to Text
-	go src.SetSTTListenerThread()
+	go services.SetSTTListenerThread()
 	
 	// Alexa (Speech to Speech)
-	go src.SetAlexaListenerThread()
+	go services.SetAlexaListenerThread()
 
 	select {} // listen until program termination
 }
